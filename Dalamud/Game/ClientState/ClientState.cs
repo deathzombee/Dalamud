@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
+using Dalamud.Game.ClientState.Aetherytes;
 using Dalamud.Game.ClientState.Buddy;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Fates;
@@ -60,6 +61,8 @@ namespace Dalamud.Game.ClientState
             Service<Condition>.Set(this.address);
 
             Service<TargetManager>.Set(this.address);
+
+            Service<AetheryteList>.Set(this.address);
 
             Log.Verbose($"SetupTerritoryType address 0x{this.address.SetupTerritoryType.ToInt64():X}");
 
