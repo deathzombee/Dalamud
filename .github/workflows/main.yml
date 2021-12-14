@@ -42,8 +42,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        repository: goatcorp/dalamud-distrib
-        ssh-key: ${{ secrets.DEPLOY_SSH }}
+        repository: deathzombee/Dalamud
+        ssh-key: ${{ secrets.SSH_PRIVATE_KEY }} 
     - uses: actions/download-artifact@v2
       with:
         name: dalamud-artifact
