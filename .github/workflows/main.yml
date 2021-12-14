@@ -78,7 +78,7 @@ jobs:
         GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
       run: |
         eval "$(ssh-agent -s)"
-        ssh-add - <<< "${DEPLOY_SSH}"
+        ssh-add - <<< "${{ secrets.SSH_PRIVATE_KEY }}"
         
         git config --global user.name "Actions User"
         git config --global user.email "actions@github.com"
