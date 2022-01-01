@@ -74,12 +74,12 @@ namespace Dalamud.Plugin.Internal
         /// <summary>
         /// An event that fires when the installed plugins have changed.
         /// </summary>
-        public event Action OnInstalledPluginsChanged;
+        public event Action? OnInstalledPluginsChanged;
 
         /// <summary>
         /// An event that fires when the available plugins have changed.
         /// </summary>
-        public event Action OnAvailablePluginsChanged;
+        public event Action? OnAvailablePluginsChanged;
 
         /// <summary>
         /// Gets a list of all loaded plugins.
@@ -247,9 +247,9 @@ namespace Dalamud.Plugin.Internal
                     {
                         // Not a plugin
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
-                        Log.Error("During boot plugin load, an unexpected error occurred");
+                        Log.Error(ex, "During boot plugin load, an unexpected error occurred");
                     }
                 }
             }
@@ -512,7 +512,7 @@ namespace Dalamud.Plugin.Internal
         /// <param name="isBoot">If this plugin is being loaded at boot.</param>
         /// <param name="doNotLoad">Don't load the plugin, just don't do it.</param>
         /// <returns>The loaded plugin.</returns>
-        public LocalPlugin LoadPlugin(FileInfo dllFile, LocalPluginManifest manifest, PluginLoadReason reason, bool isDev = false, bool isBoot = false, bool doNotLoad = false)
+        public LocalPlugin LoadPlugin(FileInfo dllFile, LocalPluginManifest? manifest, PluginLoadReason reason, bool isDev = false, bool isBoot = false, bool doNotLoad = false)
         {
             var name = manifest?.Name ?? dllFile.Name;
             var loadPlugin = !doNotLoad;
@@ -1042,7 +1042,7 @@ namespace Dalamud.Plugin.Internal
 
         private struct PluginDef
         {
-            public PluginDef(FileInfo dllFile, LocalPluginManifest manifest, bool isDev)
+            public PluginDef(FileInfo dllFile, LocalPluginManifest? manifest, bool isDev)
             {
                 this.DllFile = dllFile;
                 this.Manifest = manifest;
@@ -1051,7 +1051,7 @@ namespace Dalamud.Plugin.Internal
 
             public FileInfo DllFile { get; init; }
 
-            public LocalPluginManifest Manifest { get; init; }
+            public LocalPluginManifest? Manifest { get; init; }
 
             public bool IsDev { get; init; }
 
@@ -1083,8 +1083,8 @@ namespace Dalamud.Plugin.Internal
         /// </summary>
         internal static readonly Dictionary<string, PluginPatchData> PluginLocations = new();
 
-        private MonoMod.RuntimeDetour.Hook assemblyLocationMonoHook;
-        private MonoMod.RuntimeDetour.Hook assemblyCodeBaseMonoHook;
+        private MonoMod.RuntimeDetour.Hook? assemblyLocationMonoHook;
+        private MonoMod.RuntimeDetour.Hook? assemblyCodeBaseMonoHook;
 
         /// <summary>
         /// Patch method for internal class RuntimeAssembly.Location, also known as Assembly.Location.
@@ -1165,7 +1165,7 @@ namespace Dalamud.Plugin.Internal
         {
             var targetType = typeof(PluginManager).Assembly.GetType();
 
-            var locationTarget = targetType.GetProperty(nameof(Assembly.Location)).GetGetMethod();
+            var locationTarget = targetType.GetProperty(nameof(Assembly.Location))!.GetGetMethod();
             var locationPatch = typeof(PluginManager).GetMethod(nameof(PluginManager.AssemblyLocationPatch), BindingFlags.NonPublic | BindingFlags.Static);
             this.assemblyLocationMonoHook = new MonoMod.RuntimeDetour.Hook(locationTarget, locationPatch);
 
