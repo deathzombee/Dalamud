@@ -25,6 +25,7 @@ using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
+using Dalamud.Game.Gui.Dtr;
 using Dalamud.Game.Gui.FlyText;
 using Dalamud.Game.Gui.Toast;
 using Dalamud.Game.Text;
@@ -53,6 +54,7 @@ namespace Dalamud.Interface.Internal.Windows
         private readonly string[] dataKindNames = Enum.GetNames(typeof(DataKind)).Select(k => k.Replace("_", " ")).ToArray();
 
         private bool wasReady;
+        private bool isExcept;
         private string serverOpString;
         private DataKind currentKind;
 
@@ -107,6 +109,11 @@ namespace Dalamud.Interface.Internal.Windows
         private Vector4 inputTintCol = Vector4.One;
         private Vector2 inputTexScale = Vector2.Zero;
 
+        // DTR
+        private DtrBarEntry? dtrTest1;
+        private DtrBarEntry? dtrTest2;
+        private DtrBarEntry? dtrTest3;
+
         private uint copyButtonIndex = 0;
 
         /// <summary>
@@ -157,6 +164,7 @@ namespace Dalamud.Interface.Internal.Windows
             TaskSched,
             Hook,
             Aetherytes,
+            Dtr_Bar,
         }
 
         /// <inheritdoc/>
@@ -336,8 +344,13 @@ namespace Dalamud.Interface.Internal.Windows
                         case DataKind.Hook:
                             this.DrawHook();
                             break;
+
                         case DataKind.Aetherytes:
                             this.DrawAetherytes();
+                            break;
+
+                        case DataKind.Dtr_Bar:
+                            this.DrawDtr();
                             break;
                     }
                 }
@@ -345,9 +358,18 @@ namespace Dalamud.Interface.Internal.Windows
                 {
                     ImGui.TextUnformatted("Data not ready.");
                 }
+
+                this.isExcept = false;
             }
             catch (Exception ex)
             {
+                if (!this.isExcept)
+                {
+                    Log.Error(ex, "Could not draw data");
+                }
+
+                this.isExcept = true;
+
                 ImGui.TextUnformatted(ex.ToString());
             }
 
@@ -1576,6 +1598,58 @@ namespace Dalamud.Interface.Internal.Windows
             }
 
             ImGui.EndTable();
+        }
+
+        private void DrawDtr()
+        {
+            this.DrawDtrTestEntry(ref this.dtrTest1, "DTR Test #1");
+            ImGui.Separator();
+            this.DrawDtrTestEntry(ref this.dtrTest2, "DTR Test #2");
+            ImGui.Separator();
+            this.DrawDtrTestEntry(ref this.dtrTest3, "DTR Test #3");
+            ImGui.Separator();
+
+            var configuration = Service<DalamudConfiguration>.Get();
+            if (configuration.DtrOrder != null)
+            {
+                ImGui.Separator();
+
+                foreach (var order in configuration.DtrOrder)
+                {
+                    ImGui.Text(order);
+                }
+            }
+        }
+
+        private void DrawDtrTestEntry(ref DtrBarEntry? entry, string title)
+        {
+            var dtrBar = Service<DtrBar>.Get();
+
+            if (entry != null)
+            {
+                ImGui.Text(title);
+
+                var text = entry.Text?.TextValue ?? string.Empty;
+                if (ImGui.InputText($"Text###{entry.Title}t", ref text, 255))
+                    entry.Text = text;
+
+                var shown = entry.Shown;
+                if (ImGui.Checkbox($"Shown###{entry.Title}s", ref shown))
+                    entry.Shown = shown;
+
+                if (ImGui.Button($"Remove###{entry.Title}r"))
+                {
+                    entry.Remove();
+                    entry = null;
+                }
+            }
+            else
+            {
+                if (ImGui.Button($"Add###{title}"))
+                {
+                    entry = dtrBar.Get(title, title);
+                }
+            }
         }
 
         private async Task TestTaskInTaskDelay()

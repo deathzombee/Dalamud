@@ -45,6 +45,58 @@ namespace Dalamud.Utility
         public static string AssemblyVersion { get; } = Assembly.GetAssembly(typeof(ChatHandlers)).GetName().Version.ToString();
 
         /// <summary>
+        /// Check two byte arrays for equality.
+        /// </summary>
+        /// <param name="a1">The first byte array.</param>
+        /// <param name="a2">The second byte array.</param>
+        /// <returns>Whether or not the byte arrays are equal.</returns>
+        public static unsafe bool FastByteArrayCompare(byte[]? a1, byte[]? a2)
+        {
+            // Copyright (c) 2008-2013 Hafthor Stefansson
+            // Distributed under the MIT/X11 software license
+            // Ref: http://www.opensource.org/licenses/mit-license.php.
+            // https://stackoverflow.com/a/8808245
+
+            if (a1 == a2) return true;
+            if (a1 == null || a2 == null || a1.Length != a2.Length)
+                return false;
+            fixed (byte* p1 = a1, p2 = a2)
+            {
+                byte* x1 = p1, x2 = p2;
+                var l = a1.Length;
+                for (var i = 0; i < l / 8; i++, x1 += 8, x2 += 8)
+                {
+                    if (*((long*)x1) != *((long*)x2))
+                        return false;
+                }
+
+                if ((l & 4) != 0)
+                {
+                    if (*((int*)x1) != *((int*)x2))
+                        return false;
+                    x1 += 4;
+                    x2 += 4;
+                }
+
+                if ((l & 2) != 0)
+                {
+                    if (*((short*)x1) != *((short*)x2))
+                        return false;
+                    x1 += 2;
+                    x2 += 2;
+                }
+
+                if ((l & 1) != 0)
+                {
+                    if (*((byte*)x1) != *((byte*)x2))
+                        return false;
+                }
+
+                return true;
+            }
+        }
+
+        /// <summary>
         /// Gets the git hash value from the assembly
         /// or null if it cannot be found.
         /// </summary>
@@ -227,7 +279,7 @@ namespace Dalamud.Utility
                     ShowValue(addr, new List<string>(path) { f.Name }, f.FieldType, f.GetValue(obj));
                 }
 
-                foreach (var p in obj.GetType().GetProperties())
+                foreach (var p in obj.GetType().GetProperties().Where(p => p.GetGetMethod()?.GetParameters().Length == 0))
                 {
                     ImGui.TextColored(new Vector4(0.2f, 0.9f, 0.9f, 1), $"{p.PropertyType.Name}");
                     ImGui.SameLine();
@@ -295,7 +347,7 @@ namespace Dalamud.Utility
 
             ImGui.Indent();
 
-            foreach (var propertyInfo in type.GetProperties())
+            foreach (var propertyInfo in type.GetProperties().Where(p => p.GetGetMethod()?.GetParameters().Length == 0))
             {
                 var value = propertyInfo.GetValue(obj);
                 var valueType = value?.GetType();
@@ -334,6 +386,24 @@ namespace Dalamud.Utility
 
             if (exit)
                 Environment.Exit(-1);
+        }
+
+        /// <summary>
+        /// Transform byte count to human readable format.
+        /// </summary>
+        /// <param name="bytes">Number of bytes.</param>
+        /// <returns>Human readable version.</returns>
+        public static string FormatBytes(long bytes)
+        {
+            string[] suffix = { "B", "KB", "MB", "GB", "TB" };
+            int i;
+            double dblSByte = bytes;
+            for (i = 0; i < suffix.Length && bytes >= 1024; i++, bytes /= 1024)
+            {
+                dblSByte = bytes / 1024.0;
+            }
+
+            return $"{dblSByte:0.##} {suffix[i]}";
         }
 
         /// <summary>
@@ -455,6 +525,16 @@ namespace Dalamud.Utility
                 UseShellExecute = true,
             };
             Process.Start(process);
+        }
+
+        /// <summary>
+        /// Dispose this object.
+        /// </summary>
+        /// <param name="obj">The object to dispose.</param>
+        /// <typeparam name="T">The type of object to dispose.</typeparam>
+        internal static void ExplicitDispose<T>(this T obj) where T : IDisposable
+        {
+            obj.Dispose();
         }
 
         private static unsafe void ShowValue(ulong addr, IEnumerable<string> path, Type type, object value)

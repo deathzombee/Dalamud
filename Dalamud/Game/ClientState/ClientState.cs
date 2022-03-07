@@ -11,10 +11,12 @@ using Dalamud.Game.ClientState.Keys;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Party;
+using Dalamud.Game.Gui;
 using Dalamud.Game.Network.Internal;
 using Dalamud.Hooking;
 using Dalamud.IoC;
 using Dalamud.IoC.Internal;
+using Dalamud.Utility;
 using Serilog;
 
 namespace Dalamud.Game.ClientState
@@ -136,11 +138,11 @@ namespace Dalamud.Game.ClientState
         /// <summary>
         /// Dispose of managed and unmanaged resources.
         /// </summary>
-        public void Dispose()
+        void IDisposable.Dispose()
         {
             this.setupTerritoryTypeHook.Dispose();
-            Service<Condition>.Get().Dispose();
-            Service<GamepadState>.Get().Dispose();
+            Service<Condition>.Get().ExplicitDispose();
+            Service<GamepadState>.Get().ExplicitDispose();
             Service<Framework>.Get().Update -= this.FrameworkOnOnUpdateEvent;
             Service<NetworkHandlers>.Get().CfPop -= this.NetworkHandlersOnCfPop;
         }
@@ -163,12 +165,14 @@ namespace Dalamud.Game.ClientState
         private void FrameworkOnOnUpdateEvent(Framework framework)
         {
             var condition = Service<Condition>.Get();
+            var gameGui = Service<GameGui>.Get();
             if (condition.Any() && this.lastConditionNone == true)
             {
                 Log.Debug("Is login");
                 this.lastConditionNone = false;
                 this.IsLoggedIn = true;
                 this.Login?.Invoke(this, null);
+                gameGui.ResetUiHideState();
             }
 
             if (!condition.Any() && this.lastConditionNone == false)
@@ -177,6 +181,7 @@ namespace Dalamud.Game.ClientState
                 this.lastConditionNone = true;
                 this.IsLoggedIn = false;
                 this.Logout?.Invoke(this, null);
+                gameGui.ResetUiHideState();
             }
         }
     }

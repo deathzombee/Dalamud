@@ -5,11 +5,14 @@ using System.Reflection;
 
 using Dalamud.Configuration.Internal;
 using Dalamud.Game;
+using Dalamud.Game.Gui.Dtr;
 using Dalamud.IoC.Internal;
 using Dalamud.Logging.Internal;
 using Dalamud.Plugin.Internal.Exceptions;
 using Dalamud.Plugin.Internal.Loader;
 using Dalamud.Plugin.Internal.Types;
+using Dalamud.Utility;
+using Dalamud.Utility.Signatures;
 
 namespace Dalamud.Plugin.Internal
 {
@@ -209,7 +212,7 @@ namespace Dalamud.Plugin.Internal
             this.instance?.Dispose();
             this.instance = null;
 
-            this.DalamudInterface?.Dispose();
+            this.DalamudInterface?.ExplicitDispose();
             this.DalamudInterface = null;
 
             this.pluginType = null;
@@ -332,10 +335,12 @@ namespace Dalamud.Plugin.Internal
                 if (this.instance == null)
                 {
                     this.State = PluginState.LoadError;
-                    this.DalamudInterface.Dispose();
+                    this.DalamudInterface.ExplicitDispose();
                     Log.Error($"Error while loading {this.Name}, failed to bind and call the plugin constructor");
                     return;
                 }
+
+                SignatureHelper.Initialise(this.instance);
 
                 // In-case the manifest name was a placeholder. Can occur when no manifest was included.
                 if (this.instance.Name != this.Manifest.Name)
@@ -382,7 +387,7 @@ namespace Dalamud.Plugin.Internal
                 this.instance?.Dispose();
                 this.instance = null;
 
-                this.DalamudInterface?.Dispose();
+                this.DalamudInterface?.ExplicitDispose();
                 this.DalamudInterface = null;
 
                 this.pluginType = null;
@@ -412,6 +417,11 @@ namespace Dalamud.Plugin.Internal
         public void Reload()
         {
             this.Unload(true);
+
+            // We need to handle removed DTR nodes here, as otherwise, plugins will not be able to re-add their bar entries after updates.
+            var dtr = Service<DtrBar>.Get();
+            dtr.HandleRemovedNodes();
+
             this.Load(PluginLoadReason.Reload, true);
         }
 

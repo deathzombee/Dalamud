@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 
@@ -26,6 +27,8 @@ namespace Dalamud.Interface.Internal.Windows.SelfTest
                 new LoginEventAgingStep(),
                 new WaitFramesAgingStep(1000),
                 new EnterTerritoryAgingStep(148, "Central Shroud"),
+                new ItemPayloadAgingStep(),
+                new ContextMenuAgingStep(),
                 new ActorTableAgingStep(),
                 new FateTableAgingStep(),
                 new AetheryteListAgingStep(),
