@@ -141,9 +141,9 @@ namespace Dalamud.Interface.GameFonts
                             target.Value!.ConfigData,
                             (ushort)glyph->Codepoint,
                             glyph->X0 * scale,
-                            glyph->Y0 * scale,
+                            ((glyph->Y0 - source.Value!.Ascent) * scale) + target.Value!.Ascent,
                             glyph->X1 * scale,
-                            glyph->Y1 * scale,
+                            ((glyph->Y1 - source.Value!.Ascent) * scale) + target.Value!.Ascent,
                             glyph->U0,
                             glyph->V0,
                             glyph->U1,
@@ -153,9 +153,9 @@ namespace Dalamud.Interface.GameFonts
                     else if (!missingOnly)
                     {
                         prevGlyphPtr->X0 = glyph->X0 * scale;
-                        prevGlyphPtr->Y0 = glyph->Y0 * scale;
+                        prevGlyphPtr->Y0 = ((glyph->Y0 - source.Value!.Ascent) * scale) + target.Value!.Ascent;
                         prevGlyphPtr->X1 = glyph->X1 * scale;
-                        prevGlyphPtr->Y1 = glyph->Y1 * scale;
+                        prevGlyphPtr->Y1 = ((glyph->Y1 - source.Value!.Ascent) * scale) + target.Value!.Ascent;
                         prevGlyphPtr->U0 = glyph->U0;
                         prevGlyphPtr->V0 = glyph->V0;
                         prevGlyphPtr->U1 = glyph->U1;
@@ -177,6 +177,9 @@ namespace Dalamud.Interface.GameFonts
         /// <param name="rebuildLookupTable">Whether to call target.BuildLookupTable().</param>
         public static void UnscaleFont(ImFontPtr fontPtr, float fontScale, bool rebuildLookupTable = true)
         {
+            if (fontScale == 1)
+                return;
+
             unsafe
             {
                 var font = fontPtr.NativePtr;
@@ -289,7 +292,7 @@ namespace Dalamud.Interface.GameFonts
                 ImFontConfigPtr fontConfig = ImGuiNative.ImFontConfig_ImFontConfig();
                 fontConfig.OversampleH = 1;
                 fontConfig.OversampleV = 1;
-                fontConfig.PixelSnapH = true;
+                fontConfig.PixelSnapH = false;
 
                 var io = ImGui.GetIO();
 
@@ -305,6 +308,7 @@ namespace Dalamud.Interface.GameFonts
                         continue;
 
                     var font = io.Fonts.AddFontDefault(fontConfig);
+
                     this.fonts[style] = font;
                     foreach (var glyph in fdt.Glyphs)
                     {
@@ -343,7 +347,7 @@ namespace Dalamud.Interface.GameFonts
             {
                 var fdt = this.fdts[(int)style.FamilyAndSize];
                 var fontPtr = font.NativePtr;
-                fontPtr->ConfigData->SizePixels = fontPtr->FontSize = fdt.FontHeader.LineHeight;
+                fontPtr->ConfigData->SizePixels = fontPtr->FontSize = fdt.FontHeader.Size * 4 / 3;
                 fontPtr->Ascent = fdt.FontHeader.Ascent;
                 fontPtr->Descent = fdt.FontHeader.Descent;
                 fontPtr->EllipsisChar = '…';
@@ -444,6 +448,9 @@ namespace Dalamud.Interface.GameFonts
         {
             lock (this.syncRoot)
             {
+                if (!this.fontUseCounter.ContainsKey(style))
+                    return;
+
                 if ((this.fontUseCounter[style] -= 1) == 0)
                     this.fontUseCounter.Remove(style);
             }

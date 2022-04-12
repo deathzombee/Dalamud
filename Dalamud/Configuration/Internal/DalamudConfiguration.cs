@@ -20,7 +20,7 @@ namespace Dalamud.Configuration.Internal
         /// <summary>
         /// Currently used beta key for Dalamud staging builds.
         /// </summary>
-        public const string DalamudCurrentBetaKey = "proof of context";
+        public const string DalamudCurrentBetaKey = "If you read this you are a beta tester for the awesome .NET 6 version of Dalamud! Hell yeah!";
 
         private static readonly JsonSerializerSettings SerializerSettings = new()
         {
@@ -141,7 +141,13 @@ namespace Dalamud.Configuration.Internal
         /// * ...TTF fonts loaded with stb or FreeType are in linear space.
         /// * ...the game's prebaked AXIS fonts are in gamma space with gamma value of 1.4.
         /// </summary>
-        public float FontGamma { get; set; } = 1.0f;
+        public float FontGammaLevel { get; set; } = 1.4f;
+
+        /// <summary>
+        /// Gets or sets a value indicating the level of font resolution between 1 to 5.
+        /// 0(1024x1024), 1(2048x2048), 2(4096x4096), 3(8192x8192), 4(16384x16384).
+        /// </summary>
+        public int FontResolutionLevel { get; set; } = 2;
 
         /// <summary>
         /// Gets or sets a value indicating whether or not plugin UI should be hidden.
@@ -289,6 +295,11 @@ namespace Dalamud.Configuration.Internal
         /// Gets or sets a value indicating whether the title screen menu is shown.
         /// </summary>
         public bool ShowTsm { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether or not market board data should be uploaded.
+        /// </summary>
+        public bool IsMbCollect { get; set; } = true;
 
         /// <summary>
         /// Load a configuration from the provided path.
