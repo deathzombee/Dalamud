@@ -1,0 +1,86 @@
+name: Build Dalamud
+on: [push, pull_request, workflow_dispatch]
+concurrency: build_dalamud
+
+jobs:
+  build:
+    name: Build on Windows
+    runs-on: windows-2022
+    steps:
+      - name: Checkout Dalamud
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.0.2
+      - name: Define VERSION
+        run: |
+          $env:COMMIT = $env:GITHUB_SHA.Substring(0, 7)
+          $env:REPO_NAME = $env:GITHUB_REPOSITORY -replace '.*/'
+          $env:BRANCH = $env:GITHUB_REF -replace '.*/'
+
+          ($env:REPO_NAME) >> VERSION
+          ($env:BRANCH) >> VERSION
+          ($env:COMMIT) >> VERSION
+      - name: Build Dalamud
+        run: .\build.ps1 compile
+      - name: Test Dalamud
+        run: .\build.ps1 test
+      - name: Create hashlist
+        run: .\CreateHashList.ps1 .\bin\Release
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: dalamud-artifact
+          path: bin\Release
+  
+  deploy_stg:
+    name: Deploy dalamud-distrib staging
+    needs: build
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: deathzombee/Dalamud
+        ssh-key: ${{ secrets.SSH_PRIVATE_KEY }} 
+    - uses: actions/download-artifact@v2
+      with:
+        name: dalamud-artifact
+        path: .\scratch
+
+    - name: Generate dalamud-distrib version file
+      shell: pwsh
+      run: |
+        Compress-Archive .\scratch\* .\canary.zip  # Recreate the release zip
+        
+        $dllBytes = [System.IO.File]::ReadAllBytes("$(Get-Location)\scratch\Dalamud.dll")
+        $assembly = [System.Reflection.Assembly]::Load($dllBytes)
+        $newVersion = $assembly.GetCustomAttributes([System.Reflection.AssemblyMetadataAttribute]) | Where { $_.GetType() -eq [System.Reflection.AssemblyMetadataAttribute] } | Select -First 1 | Select -ExpandProperty "Value"
+        
+
+        $versionData = Get-Content .\stg\version | ConvertFrom-Json
+        $oldVersion = $versionData.AssemblyVersion
+
+        Move-Item -Force .\canary.zip .\stg\latest.zip
+        $versionData.AssemblyVersion = $newVersion
+        $versionData | ConvertTo-Json -Compress | Out-File .\stg\version
+
+        
+        echo "DVER=${newVersion}" >> $Env:GITHUB_ENV
+        
+    - name: Commit changes
+      shell: bash
+      env:
+        DEPLOY_SSH: ${{ secrets.SSH_PRIVATE_KEY }}
+        GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
+      run: |
+        eval "$(ssh-agent -s)"
+        ssh-add - <<< "${{ secrets.SSH_PRIVATE_KEY }}"
+        
+        git config --global user.name "Actions User"
+        git config --global user.email "deez@deez"
+        
+        git add .
+        git commit -m "[CI] Update staging for ${DVER}" || true
+        
+        git push origin main || true
